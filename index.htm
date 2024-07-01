@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<title>Simplest Custom Pod</title>
+	<script type="application/javascript" src="lib/connect_customPodSDK.js"></script>
+	<link rel="stylesheet" href="./output.css"></link>
+	<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+
+<style>
+	input::-webkit-outer-spin-button,
+	input::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	input[type=number] {
+    	-moz-appearance: textfield;
+	}
+	input[type="time"]::-webkit-calendar-picker-indicator {
+		display: none;
+	}
+	.blink {
+		animation: blinker 1s step-start infinite;
+	}
+	@keyframes blinker {
+		50% {
+			opacity: 0.5;
+		}
+	}
+</style>
+
+<script type="application/javascript">
+	const sync = ConnectCustomSDK.SyncConnector || {};
+	sync.init(console.log('Sync initialised...'), "com.adobe.connect.basiclistsync", "1.0.001", "connectsdkhook");
+</script>
+
+<body class="h-screen p-0.5" x-data="prompt">
+
+	<template x-if="user.meta.role == 'owner'">
+		<div class="h-full mx-auto w-full">
+			<template x-if="tab == 0">
+				<div class="flex flex-col gap-2 h-full py-1">
+					<div class="grow text-center gap-6 flex flex-col justify-center items-center text-xs">
+						<div class="w-full">
+							<textarea rows="3" class="outline-none bg-transparent border-b border-slate-200 w-full" placeholder="Your priority text goes here..." x-model="controls.texts.primary"></textarea>
+							<button class="bg-blue-500 p-1 rounded-md text-white shadow flex items-center gap-1 relative" style="width: 58px" @click="updateTextPressed(true)"> 
+								<span x-cloak x-show="presenters.text" class="w-2.5 h-2.5 bg-red-500 animate-pulse rounded-full absolute" style="left: 52px; bottom: 17px"></span>
+								<img src="./lib/icons/pencil.svg" class="w-4 h-4" />
+								<span>Text</span>
+							</button>
+						</div>
+						<div class="relative self-start">
+							<input class="cursor-pointer appearance-none outline-none bg-transparent border-b border-slate-200 text-center text-xl" style="width: 34px" @focus="(e) => e.target.select()" @input="controls.countdown = ($el.value * 60)" :value="(0 + Math.floor(controls.countdown / 60).toString()).slice(-2)" />
+							<span class="text-xl">:</span>
+							<input class="appearance-none outline-none bg-transparent border-b border-slate-200 text-center text-xl" style="width: 34px" readonly :value="(0 + Math.floor(controls.countdown % 60).toString()).slice(-2)" />
+							<img src="./lib/icons/left-carrot.svg" class="absolute -right-5 -top-1 ml-auto cursor-pointer rotate-90" width="20" height="20" @click.stop="controls.countdown += 30" />
+							<img src="./lib/icons/left-carrot.svg" class="absolute -right-5 top-4 ml-auto cursor-pointer" width="20" height="20" style="transform: rotate(270deg);" @click.stop="if (controls.countdown >= 30) controls.countdown -= 30" />
+							<button class="absolute top-0.5 bg-blue-500 p-1 rounded-md text-white shadow mx-auto flex items-center gap-1" style="right: -100px" @click="updateClockPressed(true)"> 
+								<span x-cloak x-show="presenters.countdown" class="w-2.5 h-2.5 bg-red-500 animate-pulse rounded-full absolute" style="left: 53px; bottom: 17px"></span>
+								<img src="./lib/icons/clock.svg" class="w-4 h-4" />
+								<span>Clock</span>
+							</button>
+						</div>
+						
+						<div class="relative self-start flex gap-1 items-center">
+							<input type="number" class="appearance-none bg-transparent border-b border-slate-200 text-center text-xl cursor-pointer" style="width: 35px" @focus="(e) => e.target.select()" x-model="controls.slides" />
+							<p class="grow">Slides</p>
+							<img src="./lib/icons/left-carrot.svg" class="absolute -right-7 -top-1 ml-auto cursor-pointer rotate-90" width="20" height="20" @click="controls.slides++" />
+							<img src="./lib/icons/left-carrot.svg" class="absolute -right-7 top-4 ml-auto cursor-pointer" width="20" height="20" style="transform: rotate(270deg);" @click="if (controls.slides >= 1) controls.slides--" />
+							<button class="absolute bg-blue-500 p-1 rounded-md text-white shadow mx-auto flex items-center gap-1" style="right: -110px" @click="updateSlidesPressed(true)"> 
+								<span x-cloak x-show="presenters.slides" class="w-2.5 h-2.5 bg-red-500 animate-pulse rounded-full absolute" style="left: 53px; bottom: 17px"></span>
+								<img src="./lib/icons/slides.svg" class="w-4 h-4" />
+								<span>Slides</span>
+							</button>
+						</div>
+						<button class="bg-red-500 rounded-md mx-auto text-white p-1 flex items-center gap-1 shadow" style="width: 110px" @click="fullUpdatePressed">
+							<img src="./lib/icons/plus.svg" class="w-4 h-4" />
+							<span>Full Update</span>
+						</button>
+					</div>
+					<hr class="border-gray-400 border-dashed">
+					<div class="flex justify-between gap-2">
+						<button class="rounded-md mx-auto p-1 flex items-center gap-1 text-white shadow text-xs bg-blue-500 grow" @click="tab = 1">
+							<img src="./lib/icons/bell.svg"  class="w-4 h-4" />
+							<span>New Prompt</span>
+						</button>
+						<button class="rounded-md mx-auto p-1 flex items-center gap-1 text-white shadow text-xs grow" :class="list.issued.length ? 'bg-blue-500' : 'bg-gray-500'" @click="tab = 4">
+							<img src="./lib/icons/bell-active.svg"  class="w-4 h-s4" />
+							<span>Logs (<span x-text="list.issued.filter((x) => !x.accepted).length"></span>) </span>
+						</button>
+					</div>
+					<hr class="border-gray-400 border-dashed">  
+					<div class="flex items-center" :class="presenters.countdown ? 'justify-between' : 'justify-end'">  
+						<template x-if="presenters.countdown">
+							<div class="outline-none text-center font-semibold rounded text-xl text-white" :class="presenters.countdown?.alert == 1 || presenters.countdown?.isNeg ? 'bg-red-500' : presenters.countdown?.alert == 2 ? 'bg-red-500' : presenters.countdown?.alert == 3 ? 'bg-amber-500' : 'bg-green-500'" style="width: 125px">
+								<small class="flex items-center justify-center gap-1 text-xl" :class="presenters.countdown?.isNeg && presenters.settings.flash ? 'blink' : ''">
+									<span x-cloak x-show="presenters.countdown?.isNeg">-</span>
+									<span x-text="presenters.countdown?.formatted || 0"></span>
+								</small>
+							</div>
+						</template>
+						<img src="./lib/icons/settings.svg" class="w-5 h-5 ml-auto cursor-pointer" @click="tab = 5" />
+					</div>
+				</div>
+			</template>
+			<template x-if="tab == 1">
+				<div class="space-y-4">
+					<img src="./lib/icons/left-carrot.svg" class="w-7 h-7 ml-auto cursor-pointer" @click="tab = 0" />
+					<div class="grid grid-cols-3 gap-2 h-full">
+						<template x-for="(prompt, indx) in list.prompts">
+							<button class="border border-black rounded aspect-square p-2 hover:bg-slate-200" @click="promptBuilder.item = prompt; tab = 2">
+								<img :src="prompt.icon" class="w-full h-full mx-auto" />
+							</button>
+						</template>
+					</div>
+				</div>
+			</template>
+			<template x-if="tab == 2">
+				<div class="space-y-4">
+					<img src="./lib/icons/left-carrot.svg" class="w-7 h-7 ml-auto cursor-pointer" @click="tab = 1" />
+					<div class="flex flex-col items-center gap-4 h-full">
+						<button class="rounded aspect-square p-2 bg-red-400 shadow hover:ring hover:ring-slate-700 hover:ring-offset-2" style="width: 75px" @click="promptBuilder.alert = 'red'; tab = 3">
+							<img :src="promptBuilder.item.icon" class="w-full h-full mx-auto" />
+						</button>
+						<button class="rounded aspect-square p-2 bg-amber-400 shadow hover:ring hover:ring-slate-700 hover:ring-offset-2" style="width: 75px" @click="promptBuilder.alert = 'amber'; tab = 3">
+							<img :src="promptBuilder.item.icon" class="w-full h-full mx-auto" />
+						</button>
+						<button class="rounded aspect-square p-2 bg-green-400 shadow hover:ring hover:ring-slate-700 hover:ring-offset-2" style="width: 75px" @click="promptBuilder.alert = 'green'; tab = 3">
+							<img :src="promptBuilder.item.icon" class="w-full h-full mx-auto" />
+						</button>
+					</div>
+				</div>
+			</template>
+			<template x-if="tab == 3">
+				<div class="space-y-4">
+					<img src="./lib/icons/left-carrot.svg" class="w-7 h-7 ml-auto cursor-pointer" @click="promptBuilder.toReceive.length = 0; tab = 2" />
+					<div>
+						<button class="rounded aspect-square p-1 shadow mx-auto block" :class="promptBuilder.alert == 'red' ? 'bg-red-400' : promptBuilder.alert == 'amber' ? 'bg-amber-400' : 'bg-green-400'" disabled style="width: 35px">
+							<img :src="promptBuilder.item.icon" class="w-full h-full" />
+						</button>
+						<small class="text-[10px] block m-auto text-center" x-text="promptBuilder.item.texts[promptBuilder.alert]"></small>
+					</div>
+					<hr>
+					<div class="flex flex-col gap-1 items-center text-xs px-1">
+						<div class="flex justify-between gap-1 w-full">
+							<small class="font-semibold underline underline-offset-2">Name</small>
+							<small class="font-semibold underline underline-offset-2">Receive</small>
+						</div>
+						<template x-for="attendee in sortAttendeesByName">
+							<template x-if="attendee.role == 'presenter'">
+								<div class="grid grid-cols-12 gap-1 cursor-pointer hover:bg-blue-100 rounded" @click="attendeeToPromptClicked(attendee)">
+									<small class="col-span-11" x-text="attendee.fullName"></small>
+									<input type="checkbox" class="cursor-pointer" :checked="promptBuilder.toReceive.find((x) => x.id == attendee.id)" />
+								</div>
+							</template>
+						</template>
+						<button class="border rounded-md p-1 mt-4 shadow text-white self-center flex items-center gap-1" :class="promptBuilder.toReceive.length ? 'bg-blue-500' : 'bg-gray-500'" @click="sendPromptPressed" :disabled="!promptBuilder.toReceive.length">
+							<img src="./lib/icons/arrow.svg" width="20" height="20" />
+							<span>Send</span>
+						</button>
+					</div>
+				</div>
+			</template>
+			<template x-if="tab == 4">
+				<div class="space-y-4 text-xs px-0.5" x-data="{dropdown: false, type: 'LIVE', allCounts: {}}" x-init="allCounts = tallyPrompts(); console.log(allCounts)">
+					<img src="./lib/icons/left-carrot.svg" class="w-7 h-7 ml-auto cursor-pointer" @click="tab = 0" />
+					<div class="relative">
+						<small class="flex items-center overflow-hidden">Showing: <input type="text" class="pl-0.5 font-semibold rounded bg-transparent cursor-pointer focus:outline-none focus:border-0" :value="type" @click="dropdown = true" @click.away="dropdown = false" readonly /></small>
+						<div x-cloak x-show="dropdown" class="absolute bg-slate-200 flex flex-col w-full rounded-b border border-slate-500 shadow-xl z-10">
+							<div class="grid grid-cols-2 cursor-pointer hover:bg-slate-700 hover:text-white" @click="count = 0; type = 'LIVE'">
+								<small class="cursor-pointer">LIVE</small>
+								<small class="text-center" x-text="allCounts['LIVE']"></small>
+							</div>
+							<div class="grid grid-cols-2 cursor-pointer hover:bg-slate-700 hover:text-white" @click="count = 0; type = 'ACKNOWLEDGED'">
+								<small>ACKNOWLEDGED</small>
+								<small class="text-center" x-text="allCounts['ACKNOWLEDGED']"></small>
+							</div>
+							<div class="grid grid-cols-2 cursor-pointer hover:bg-slate-700 hover:text-white" @click="count = 0; type = 'EXPIRED'">
+								<small>EXPIRED</small>
+								<small class="text-center" x-text="allCounts['EXPIRED']"></small>
+							</div>
+							<div class="grid grid-cols-2 cursor-pointer hover:bg-slate-700 hover:text-white" @click="count = 0; type = 'REVOKED'">
+								<small>REVOKED</small>
+								<small class="text-center" x-text="allCounts['REVOKED']"></small>
+							</div>
+							<div class="grid grid-cols-2 cursor-pointer hover:bg-slate-700 hover:text-white" @click="count = 0; type = 'LEFT ROOM'">
+								<small>LEFT ROOM</small>
+								<small class="text-center" x-text="allCounts['LEFT ROOM']"></small>
+							</div>
+						</div>
+					</div>
+					<template x-for="issue in filterPrompts(type)">
+						<div class="border rounded flex flex-col bg-blue-200 ring-1 ring-offset-1 ring-slate-500">
+							<div class="text-center flex flex-col items-center gap-3 p-1 rounded text-xs border shadow relative" :class="issue.accepted ? 'bg-gray-300' : issue.alert == 'red' ? 'bg-red-300' : issue.alert == 'amber' ? 'bg-amber-300' : 'bg-green-300'">
+								<small x-cloak x-show="issue.accepted" class="self-start uppercase" x-text="issue.reason"></small>
+								<button x-show="!issue.accepted" class="self-start rounded-md py-0.5 px-2 bg-red-500 text-xs text-white uppercase" @click="revokePromptPressed(issue)">Revoke</button>
+								<img x-cloak x-show="issue.accepted && issue.reason == 'ACKNOWLEDGED'" class="absolute top-0.5 right-0.5" src="./lib/icons/tick.svg" width="20" height="20" />
+								<img x-cloak x-show="issue.accepted && issue.reason == 'EXPIRED'" class="absolute top-0.5 right-0.5" src="./lib/icons/hourglass.svg" width="20" height="20" />
+								<img x-cloak x-show="issue.accepted && issue.reason == 'LEFT ROOM'" class="absolute top-0.5 right-0.5" src="./lib/icons/cross.svg" width="20" height="20" />
+								<img x-cloak x-show="issue.accepted && issue.reason == 'REVOKED'" class="absolute top-0.5 right-0.5" src="./lib/icons/cross.svg" width="20" height="20" />
+								<img :src="issue.item.icon" />
+								<small class="font-semibold" x-text="issue.item.texts[issue.alert]"></small>
+								<small class="self-end" x-text="issue.user.fullName"></small>
+							</div>
+							<small>Issued: <span x-text="issue.humanIssuedAt"></span></small>
+							<small>By: <span x-text="issue.author"></span></small>
+						</div>
+					</template>
+					<small x-cloak x-show="!allCounts[type]" class="text-center block">No prompts match status</small>
+				</div>
+			</template>
+			<template x-if="tab == 5">
+				<div class="space-y-4 text-xs">
+					<img src="./lib/icons/left-carrot.svg" class="w-7 h-7 ml-auto cursor-pointer" @click="tab = 0" />
+					<div class="grid grid-cols-12 items-center gap-1 hover:bg-blue-100 cursor-pointer py-1" @click="controls.settings.flash = !controls.settings.flash; updateSettings()">
+						<small class="col-span-11">Flash countdown clock if negative</small>
+						<input type="checkbox" class="cursor-pointer" :checked="controls.settings.flash" />
+					</div>
+				</div>
+			</template>
+		</div>
+	</template>
+
+	<template x-if="user.meta.role == 'presenter'">
+		<div class="flex flex-col gap-3 h-full border p-1">
+			<p class="text-center" x-text="presenters.text"></p>
+			<div class="text-center relative">
+				<template x-if="presenters.countdown">
+					<div class="outline-none text-center font-semibold rounded text-xl mx-auto text-white shadow" :class="presenters.countdown?.alert == 1 || presenters.countdown?.isNeg ? 'bg-red-500' : presenters.countdown?.alert == 2 ? 'bg-red-500' : presenters.countdown?.alert == 3 ? 'bg-amber-500' : 'bg-green-500'" style="width: 125px">
+						<small class="flex items-center justify-center gap-1 text-xl" :class="presenters.countdown?.isNeg && presenters.settings.flash ? 'blink' : ''">
+							<span x-cloak x-show="presenters.countdown?.isNeg">-</span>
+							<span x-text="presenters.countdown?.formatted || 0"></span>
+						</small>
+					</div>
+				</template>
+				<template x-if="!presenters.countdown">
+					<input x-show="!presenters.countdown" type="time" readonly step="60" class="outline-none text-center text-lg font-semibold rounded bg-transparent" style="width: 125px" />
+				</template>
+			</div>
+			<small x-cloak x-show="presenters.slides" class="text-center flex items-center justify-center gap-2"><span class="font-semibold text-xl underline underline-offset-4 decoration-2" x-text="presenters.slides"></span> slides remaining</small>
+			<hr>
+			<template x-for="(prompt, indx) in user.prompts.list.filter((x) => !x.accepted).reverse()">
+				<div x-show="indx == user.prompts.viewing" class="text-center flex flex-col items-center gap-3 p-1 rounded text-xs border shadow" :class="prompt.alert == 'red' ? 'bg-red-300' : prompt.alert == 'amber' ? 'bg-amber-300' : 'bg-green-300'">
+					<img :src="prompt.item.icon" />
+					<small class="font-semibold" x-text="prompt.item.texts[prompt.alert]"></small>
+					<button class="uppercase rounded-md bg-blue-500 px-2 text-white self-center py-1" @click="confirmPromptPressed(prompt)">Confirm</button>
+					<div class="flex justify-between items-center w-full">
+						<small>Sent <span x-text="prompt.humanSentSince"></span></small>
+						<div class="flex gap-1 items-center">
+							<button :class="user.prompts.viewing <= 0 ? 'pointer-events-none' : ''" :disabled="user.prompts.viewing <= 0" @click="user.prompts.viewing -= 1">
+								<img src="./lib/icons/left-carrot.svg" class="w-4 h-4 ml-auto" />
+							</button>
+							<small><span x-text="user.prompts.viewing + 1"></span> / <span x-text="user.prompts.list.filter((x) => !x.accepted).length"></span></small>
+							<button :class="user.prompts.viewing >= (user.prompts.list.filter((x) => !x.accepted).length - 1) ? 'pointer-events-none' : ''" :disabled="user.prompts.viewing >= (user.prompts.list.filter((x) => !x.accepted).length - 1)" @click="user.prompts.viewing += 1">
+								<img src="./lib/icons/left-carrot.svg" class="w-4 h-4 ml-auto rotate-180" />
+							</button>
+						</div>
+					</div>
+				</div>
+			</template>
+		</div>
+	</template>
+
+	<script>
+		const prompt = () => ({
+			instance: null,
+			tab: 0,
+			promptBuilder: { item: {}, alert: null, toReceive: [] },
+			controls: { countdown: 0, slides: 0, texts: { primary: null }, settings: { flash: true, showClock: true } },
+			presenters: { countdown: null, slides: null, text: null, intVal: null, settings: null },
+			list: {
+				attendees: [],
+				prompts: [
+					{
+						icon: './lib/icons/microphone.svg',
+						texts: {
+							red: 'Please turn off your microphone',
+							amber: 'Get ready to toggle on/off your microphone',
+							green: 'Please turn on your microphone'
+						}
+					},
+					{
+						icon: './lib/icons/webcam.svg',
+						texts: {
+							red: 'Please turn off your webcam',
+							amber: 'Get ready to toggle on/off your webcam',
+							green: 'Please turn on your webcam'
+						}
+					},
+					{
+						icon: './lib/icons/headset.svg',
+						texts: {
+							red: 'Please turn off your webcam and microphone',
+							amber: 'Get ready to toggle on/off your webcam and microphone',
+							green: 'Please turn on your webcam and microphone'
+						}
+					}
+				],
+				issued: []
+			},
+			user: { meta: null, prompts: { list: [], viewing: 0 } },
+			init() {
+				if (sync == {}) return;
+				this.instance = sync;
+				this.user.meta = this.instance.getMyUserDetails().data;
+				this.getAttendees();
+				this.setEvents();
+			},
+			getAttendees() {
+				for(let i = 0; i <= this.instance.sc._userList.length - 1; i++) {
+					const user = this.instance.sc._userList[i];
+					this.list.attendees.push(user);
+				}
+			},
+			setEvents() {
+				this.instance.registerCallback("userJoined", (e) => this.onUserJoin(e));
+				this.instance.registerCallback('userLeft', (e) => this.onUserLeft(e));
+				this.instance.registerCallback('roleChanged', (e) => this.onRoleChanged(e));
+				this.instance.registerCallback('syncMessageReceived', (e) => this.actionMessage(e));
+				if (this.user.meta.role == 'owner') {
+					this.instance.allowParticipantPublish('confirm', false)
+					this.instance.allowParticipantPublish('syncNewRole', false)
+				}
+			},
+			onUserJoin(e) {
+				this.list.attendees.push(e.user)
+			},
+			onUserLeft(e) {
+				for(let i = 0; i <= this.list.attendees.length - 1; i++) {
+					const user = this.list.attendees[i];
+					if (user.id == e.userID) {
+						this.list.attendees.splice(i, 1);
+						for(const x of this.list.issued) {
+							if (x.user.id == e.userID) {
+								if (!x.accepted) {
+									x.accepted = true;
+									x.reason = 'LEFT ROOM'
+								}
+							}
+						}
+						break;
+					}
+				}
+			},
+			onRoleChanged(e) {
+				for (let i = 0; i <= this.list.attendees.length -1; i++) {
+					const attendee = this.list.attendees[i];
+					if (attendee.id == e.userId) {
+						this.list.attendees[i].role = e.newRole;
+						const msg = { issued: this.list.issued, user: attendee }
+						this.instance.dispatchSyncMessage('syncNewRole', msg, true, false);
+						this.resetOwners();
+						break;
+					}
+				}
+			},
+			updateSettings() {
+				this.resetPresenters(); 
+				this.resetOwners()
+			},
+			updateSlidesPressed(reset = false) {
+				this.presenters.slides = this.controls.slides;
+				if (reset) {
+					this.resetPresenters();
+					this.resetOwners();
+				}	
+			},
+			updateTextPressed(reset = false) {
+				this.presenters.text = this.controls.texts.primary;
+				if (reset) {
+					this.resetPresenters();
+					this.resetOwners();
+				}
+			},
+			updateClockPressed(reset = false) {
+				const total = this.controls.countdown
+				let alert = 4;
+				if (total <= 60) alert = 2;
+				if (total >= 61 && total < 181) alert = 3;
+
+				this.presenters.countdown = { total, isNeg: false, formatted: this.formatSeconds(total), alert }
+
+				if (total == 0) this.presenters.countdown = null;
+		
+				if (reset) {
+					this.resetPresenters();
+					this.resetOwners();
+				}
+			},
+			fullUpdatePressed() {
+				this.updateSlidesPressed();
+				this.updateTextPressed();
+				this.updateClockPressed();
+				this.resetPresenters();
+				this.resetOwners();
+			},
+			resetPresenters() {
+				this.presenters.settings = { ...this.controls.settings };
+				if (!this.presenters.intVal) {
+					this.presenters.intVal = setInterval(() => this.handlePresenterCountdown(), 1000)
+				}
+				this.instance.dispatchSyncMessage('presenters', this.presenters, true, false);
+			},
+			resetOwners() {
+				this.instance.dispatchSyncMessage('owners', this.controls, true, false);
+			},
+			handlePresenterCountdown() {
+				let { countdown } = this.presenters;
+				if (countdown) {
+					let { total, isNeg, alert } = countdown;
+
+					if (total <= 0) {
+						alert = 1;
+						isNeg = true;
+					} else {
+						if (total <= 60) alert = 2;
+						if (total >= 61 && total <= 180) alert = 3;
+						if (total > 181) alert = 4;
+					}
+
+					isNeg ? total++ : total--;
+					this.presenters.countdown = { total, isNeg, alert, formatted: this.formatSeconds(total) }
+				}
+				this.instance.dispatchSyncMessage('presenters', this.presenters, true, false);
+			},
+			formatSeconds(total) {
+				return (0 + Math.floor(total / 60).toString()).slice(-2) + ' : '  +  (0 + Math.floor(total % 60).toString()).slice(-2)
+			},
+			sendPromptPressed() {
+				for(const x of this.promptBuilder.toReceive) {
+					const t = new Date();
+					const ts = t.getTime().toString();
+					const humanClockTime = t.toLocaleString('en-GB', { timeZone: 'Europe/London' }).slice(-8)
+					const item = { ...this.promptBuilder, accepted: false, created: ts, humanIssuedAt: humanClockTime, humanSentSince: '< 1 mins ago', user: x, author: this.user.meta.fullName };
+					item.id = ts + Math.random().toString().substr(-8);
+					this.instance.dispatchSyncMessage('prompt', item, true, false);
+
+					const fullItem = {...item, user: x};
+					this.instance.dispatchSyncMessage('pushNewPromptToAll', fullItem, true, true);
+				}
+				this.tab = 0;
+				this.promptBuilder = { item: {}, alert: null, toReceive: [] }
+			},
+			revokePromptPressed(prompt) {
+				this.instance.dispatchSyncMessage('revokePrompt', prompt, true, true);
+			},
+			actionMessage(msg) {
+				const { msgNm, msgVal } = msg;
+				switch(msgNm) {
+					case 'presenters':
+						// if (this.presenters.intVal) {
+						// 	clearInterval(this.presenters.intVal);
+						// }
+						this.presenters = {...msgVal};
+					break;
+					case 'owners':
+						this.controls = { ...msgVal };
+					break;
+					case 'prompt':
+						if (msgVal.user.id == this.user.meta.id) {
+							this.user.prompts.list.push({ ...msgVal, intVal: null })
+							const indx = this.user.prompts.list.findIndex((x) => x.id == msgVal.id);
+							setTimeout(() => { 
+								const shouldRefresh = !this.user.prompts.list[indx].accepted
+								this.user.prompts.list[indx].accepted = true;
+								if (shouldRefresh) {
+									this.user.prompts.viewing = 0;
+								}
+							}, ((1000 * 60) * 5));
+							this.user.prompts.list[indx].intval = setInterval(() => this.getHumanTimeSince(indx), 1000);
+							this.user.prompts.viewing = 0; 		
+						}
+					break;
+					case 'revokePrompt':
+						if (msgVal.user.id == this.user.meta.id) {
+							for (const x of this.user.prompts.list) {
+								if (x.id == msgVal.id) {
+									x.accepted = true;
+									x.reason = 'REVOKED';
+									this.user.prompts.viewing = 0; 
+									clearInterval(x.intval)
+									this.instance.dispatchSyncMessage('confirm', x, true, true);
+								}
+							}
+						}
+					break;
+					case 'pushNewPromptToAll':
+						this.list.issued.push(msgVal)
+					break;
+					case 'syncNewRole':
+						if (this.user.meta.id == msgVal.user.id) {
+							this.user.meta = { ...this.instance.getMyUserDetails().data };
+						}	
+					break;
+					case 'confirm':
+						for (const x of this.list.issued) {
+							if (x.id == msgVal.id) {
+								x.accepted = true;
+								x.reason = msgVal.reason
+							}
+						}
+					break;
+				}
+			},
+			attendeeToPromptClicked(attendee) {
+				const indx = this.promptBuilder.toReceive.findIndex((x) => x.id == attendee.id)
+				indx >= 0
+					? this.promptBuilder.toReceive.splice(indx, 1)
+					: this.promptBuilder.toReceive.push(attendee)
+			},
+			getHumanTimeSince(indx) {
+				const notification = this.user.prompts.list[indx];
+				const diff = (new Date().getTime() - notification.created);
+				const seconds = (diff / 1000).toFixed(0);
+				let text = '';
+				if (seconds < 60) {
+					text = '< 1 mins ago';
+				} else if (seconds >= 60 && seconds < 120) {
+					text = '< 2 mins ago';
+				} else if (seconds >= 120 && seconds < 180) {
+					text = '< 3 mins ago';
+				} else if (seconds >= 180 && seconds < 240) {
+					text = '< 4 mins ago';
+				} else if (seconds >= 240 && seconds < 300) {
+					text = '< 5 mins ago';
+				} else {
+					this.confirmPromptPressed(notification, true);					
+				}
+				notification.humanSentSince = text;
+			},
+			confirmPromptPressed(notification, fromExpire = false) {
+				notification.reason = fromExpire ? 'EXPIRED' : 'ACKNOWLEDGED';
+				notification.accepted = true;
+				this.user.prompts.viewing = 0; 
+				clearInterval(notification.intval)
+				this.instance.dispatchSyncMessage('confirm', notification, true, true);
+			},
+			sortAttendeesByName() {
+				return this.list.attendees.sort((a, b) => {
+					if (a.fullName == b.fullName) return 0;
+					return a.fullName < b.fullName ? -1 : 1
+				})
+			},
+			filterPrompts(term) {
+				if (term == 'LIVE') {
+					return this.list.issued.filter((x) => !x.hasOwnProperty('reason'));
+				}				
+				return this.list.issued.filter((x) => x.reason == term)
+			},
+			tallyPrompts() {
+				return this.list.issued.reduce((acc, c) => {
+					!c.hasOwnProperty('reason')
+						? acc['LIVE'] ? acc['LIVE']++ : acc['LIVE'] = 1
+						: acc[c.reason] ? acc[c.reason]++ : acc[c.reason] = 1;
+					return acc;
+				}, {})
+			}
+		})
+	</script>
+</body>
+
+</html>
