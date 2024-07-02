@@ -52,24 +52,21 @@
 							</button>
 						</div>
 						<div class="relative self-start">
-							<input class="cursor-pointer appearance-none outline-none bg-transparent border-b border-slate-200 text-center text-xl" style="width: 34px" @focus="(e) => e.target.select()" @input="controls.countdown = ($el.value * 60)" :value="(0 + Math.floor(controls.countdown / 60).toString()).slice(-2)" />
-							<span class="text-xl">:</span>
-							<input class="appearance-none outline-none bg-transparent border-b border-slate-200 text-center text-xl" style="width: 34px" readonly :value="(0 + Math.floor(controls.countdown % 60).toString()).slice(-2)" />
-							<img src="./lib/icons/left-carrot.svg" class="absolute -right-5 -top-1 ml-auto cursor-pointer rotate-90" width="20" height="20" @click.stop="controls.countdown += 30" />
-							<img src="./lib/icons/left-carrot.svg" class="absolute -right-5 top-4 ml-auto cursor-pointer" width="20" height="20" style="transform: rotate(270deg);" @click.stop="if (controls.countdown >= 30) controls.countdown -= 30" />
+							<input class="cursor-pointer appearance-none outline-none bg-transparent border-b border-slate-200 text-center text-xl" type="time" step="30" value="00:15:00" x-ref="i_time" />
+							<img src="./lib/icons/left-carrot.svg" class="absolute -right-5 -top-1 ml-auto cursor-pointer rotate-90" width="20" height="20" @click.stop="$refs.i_time.stepUp()" />
+							<img src="./lib/icons/left-carrot.svg" class="absolute -right-5 top-4 ml-auto cursor-pointer" width="20" height="20" style="transform: rotate(270deg);" @click.stop="$refs.i_time.stepDown()" />
 							<button class="absolute top-0.5 bg-blue-500 p-1 rounded-md text-white shadow mx-auto flex items-center gap-1" style="right: -100px" @click="updateClockPressed(true)"> 
-								<span x-cloak x-show="presenters.countdown" class="w-2.5 h-2.5 bg-red-500 animate-pulse rounded-full absolute" style="left: 53px; bottom: 17px"></span>
+								<span x-cloak x-show="presenters.countdown" class="w-2.5 h-2.5 bg-red-500 animate-pulse rounded-full absolute" style="left: 50px; bottom: 17px"></span>
 								<img src="./lib/icons/clock.svg" class="w-4 h-4" />
 								<span>Clock</span>
 							</button>
 						</div>
-						
 						<div class="relative self-start flex gap-1 items-center">
 							<input type="number" class="appearance-none bg-transparent border-b border-slate-200 text-center text-xl cursor-pointer" style="width: 35px" @focus="(e) => e.target.select()" x-model="controls.slides" />
 							<p class="grow">Slides</p>
 							<img src="./lib/icons/left-carrot.svg" class="absolute -right-7 -top-1 ml-auto cursor-pointer rotate-90" width="20" height="20" @click="controls.slides++" />
 							<img src="./lib/icons/left-carrot.svg" class="absolute -right-7 top-4 ml-auto cursor-pointer" width="20" height="20" style="transform: rotate(270deg);" @click="if (controls.slides >= 1) controls.slides--" />
-							<button class="absolute bg-blue-500 p-1 rounded-md text-white shadow mx-auto flex items-center gap-1" style="right: -110px" @click="updateSlidesPressed(true)"> 
+							<button class="absolute bg-blue-500 p-1 rounded-md text-white shadow mx-auto flex items-center gap-1" style="right: -115px" @click="updateSlidesPressed(true)"> 
 								<span x-cloak x-show="presenters.slides" class="w-2.5 h-2.5 bg-red-500 animate-pulse rounded-full absolute" style="left: 53px; bottom: 17px"></span>
 								<img src="./lib/icons/slides.svg" class="w-4 h-4" />
 								<span>Slides</span>
@@ -97,11 +94,11 @@
 							<div class="outline-none text-center font-semibold rounded text-xl text-white" :class="presenters.countdown?.alert == 1 || presenters.countdown?.isNeg ? 'bg-red-500' : presenters.countdown?.alert == 2 ? 'bg-red-500' : presenters.countdown?.alert == 3 ? 'bg-amber-500' : 'bg-green-500'" style="width: 125px">
 								<small class="flex items-center justify-center gap-1 text-xl" :class="presenters.countdown?.isNeg && presenters.settings.flash ? 'blink' : ''">
 									<span x-cloak x-show="presenters.countdown?.isNeg">-</span>
-									<span x-text="presenters.countdown?.formatted || 0"></span>
+									<span x-text="presenters.countdown?.formatted"></span>
 								</small>
 							</div>
 						</template>
-						<img src="./lib/icons/settings.svg" class="w-5 h-5 ml-auto cursor-pointer" @click="tab = 5" />
+						<img src="./lib/icons/settings.svg" class="w-6 h-6 ml-auto cursor-pointer" @click="tab = 5" />
 					</div>
 				</div>
 			</template>
@@ -231,7 +228,7 @@
 					<div class="outline-none text-center font-semibold rounded text-xl mx-auto text-white shadow" :class="presenters.countdown?.alert == 1 || presenters.countdown?.isNeg ? 'bg-red-500' : presenters.countdown?.alert == 2 ? 'bg-red-500' : presenters.countdown?.alert == 3 ? 'bg-amber-500' : 'bg-green-500'" style="width: 125px">
 						<small class="flex items-center justify-center gap-1 text-xl" :class="presenters.countdown?.isNeg && presenters.settings.flash ? 'blink' : ''">
 							<span x-cloak x-show="presenters.countdown?.isNeg">-</span>
-							<span x-text="presenters.countdown?.formatted || 0"></span>
+							<span x-text="presenters.countdown?.formatted"></span>
 						</small>
 					</div>
 				</template>
@@ -375,14 +372,25 @@
 				}
 			},
 			updateClockPressed(reset = false) {
-				const total = this.controls.countdown
+				const clockVal = this.$refs.i_time.value;
+				this.controls.countdown = clockVal
+				this.presenters.countdown = clockVal
+
+				const timeParts = clockVal.split(':');
+				const secsInHours = timeParts[0] * 60 * 60;
+				const secsInMins = timeParts[1] * 60;
+				const secs = timeParts[2] * 1;
+				const totalSeconds = secsInHours + secsInMins + secs;
+
 				let alert = 4;
-				if (total <= 60) alert = 2;
-				if (total >= 61 && total < 181) alert = 3;
+				if (totalSeconds <= 60) alert = 2;
+				if (totalSeconds >= 61 && totalSeconds < 181) alert = 3;
+				
+				const formatted = this.calcAndFormatCountdown(totalSeconds);
 
-				this.presenters.countdown = { total, isNeg: false, formatted: this.formatSeconds(total), alert }
+				this.presenters.countdown = { totalSeconds, isNeg: false, alert, formatted }
 
-				if (total == 0) this.presenters.countdown = null;
+				if (totalSeconds == 0) this.presenters.countdown = null;
 		
 				if (reset) {
 					this.resetPresenters();
@@ -409,24 +417,35 @@
 			handlePresenterCountdown() {
 				let { countdown } = this.presenters;
 				if (countdown) {
-					let { total, isNeg, alert } = countdown;
+					let { totalSeconds, isNeg, alert } = countdown;
 
-					if (total <= 0) {
+					if (totalSeconds <= 0) {
 						alert = 1;
 						isNeg = true;
 					} else {
-						if (total <= 60) alert = 2;
-						if (total >= 61 && total <= 180) alert = 3;
-						if (total > 181) alert = 4;
+						if (totalSeconds <= 60) alert = 2;
+						if (totalSeconds >= 61 && totalSeconds <= 180) alert = 3;
+						if (totalSeconds > 181) alert = 4;
 					}
 
-					isNeg ? total++ : total--;
-					this.presenters.countdown = { total, isNeg, alert, formatted: this.formatSeconds(total) }
+					isNeg ? totalSeconds++ : totalSeconds--;
+
+					const formatted = this.calcAndFormatCountdown(totalSeconds);
+			
+					this.presenters.countdown = { totalSeconds, isNeg, alert, formatted: formatted }
 				}
 				this.instance.dispatchSyncMessage('presenters', this.presenters, true, false);
 			},
-			formatSeconds(total) {
-				return (0 + Math.floor(total / 60).toString()).slice(-2) + ' : '  +  (0 + Math.floor(total % 60).toString()).slice(-2)
+			calcAndFormatCountdown(seconds) {
+				const hrs = ('00' + Math.floor(seconds / 3600)).slice(-2);
+				const mins = ('00' + Math.floor(seconds % 3600 / 60)).slice(-2)
+				const secs = ('00' + Math.floor(seconds % 3600 % 60)).slice(-2);
+
+				if (hrs == '00') {
+					return `${mins}:${secs}`
+				}
+							
+				return `${hrs}:${mins}:${secs}`
 			},
 			sendPromptPressed() {
 				for(const x of this.promptBuilder.toReceive) {
@@ -450,9 +469,6 @@
 				const { msgNm, msgVal } = msg;
 				switch(msgNm) {
 					case 'presenters':
-						// if (this.presenters.intVal) {
-						// 	clearInterval(this.presenters.intVal);
-						// }
 						this.presenters = {...msgVal};
 					break;
 					case 'owners':
