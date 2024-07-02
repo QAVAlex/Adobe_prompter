@@ -9,6 +9,7 @@
 			<file href="lib/connect_customPodSDK.js"/>
 			<file href="./output.css"/>
 			<file href="./worker.js"/>
+			<file href="./prompts.json"/>
 		</asset>
 	</assets>
 </breeze-manifest>

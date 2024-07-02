@@ -1,0 +1,31 @@
+{
+    "prompts": [
+        {
+            "icon": "./lib/icons/microphone.svg",
+            "texts": {
+                "red": "Please turn off your microphone",
+                "amber": "Get ready to toggle on/off your microphone",
+                "green": "Please turn on your microphone"
+            },
+            "id": 1
+        },
+        {
+            "icon": "./lib/icons/webcam.svg",
+            "texts": {
+                "red": "Please turn off your webcam",
+                "amber": "Get ready to toggle on/off your webcam",
+                "green": "Please turn on your webcam"
+            },
+            "id": 2
+        },
+        {
+            "icon": "./lib/icons/headset.svg",
+            "texts": {
+                "red": "Please turn off your webcam and microphone",
+                "amber": "Get ready to toggle on/off your webcam and microphone",
+                "green": "Please turn on your webcam and microphone"
+            },
+            "id": 3
+        }
+    ]
+}

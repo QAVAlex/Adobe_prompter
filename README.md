@@ -1,13 +1,21 @@
-Create a zip of the project by running
+## Create
+Create a zip of the project by running (example uses the directory name prompter)
 ```
-zip -r [give a name i.e countdown] *
+zip -r prompter *
 
 ```
 
-If a zip folder already exists, then run:
+If a zipped folder already exists, then run:
 ```
-rm -R countdown.zip && zip -r countdown *
+rm -R prompter.zip && zip -r prompter *
 
 ```
 
 to remove the existing folder and re-zip
+
+
+
+
+## Misc Info
+ - The countdown uses a web worker to handle the interval due to chrome throttling background processes after 1 minute.
+ - Any new files need adding to the breeze-manifest.xml file

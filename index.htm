@@ -258,9 +258,7 @@
 				</div>
 			</template>
 		</div>
-	</template>
-
-	
+	</template>	
 
 	<script>
 		const prompt = () => ({
@@ -272,44 +270,24 @@
 			presenters: { countdown: null, slides: null, text: null, settings: null },
 			list: {
 				attendees: [],
-				prompts: [
-					{
-						icon: './lib/icons/microphone.svg',
-						texts: {
-							red: 'Please turn off your microphone',
-							amber: 'Get ready to toggle on/off your microphone',
-							green: 'Please turn on your microphone'
-						},
-						id: 1
-					},
-					{
-						icon: './lib/icons/webcam.svg',
-						texts: {
-							red: 'Please turn off your webcam',
-							amber: 'Get ready to toggle on/off your webcam',
-							green: 'Please turn on your webcam'
-						},
-						id: 2
-					},
-					{
-						icon: './lib/icons/headset.svg',
-						texts: {
-							red: 'Please turn off your webcam and microphone',
-							amber: 'Get ready to toggle on/off your webcam and microphone',
-							green: 'Please turn on your webcam and microphone'
-						},
-						id: 3
-					}
-				],
+				prompts: [],
 				issued: []
 			},
 			user: { meta: null, prompts: { list: [], viewing: 0 } },
-			init() {
+			async init() {
 				if (sync == {}) return;
 				this.instance = sync;
 				this.user.meta = this.instance.getMyUserDetails().data;
 				this.getAttendees();
-				this.setEvents();			
+				this.setEvents();	
+				
+				const prompts = await fetch('./prompts.json', {
+					headers: {
+						'Content-type': 'application/json'
+					}
+				})
+				const json = await prompts.json();
+				this.list.prompts = json.prompts;
 			},
 			getAttendees() {
 				for(let i = 0; i <= this.instance.sc._userList.length - 1; i++) {
@@ -448,11 +426,7 @@
 				const mins = ('00' + Math.floor(seconds % 3600 / 60)).slice(-2)
 				const secs = ('00' + Math.floor(seconds % 3600 % 60)).slice(-2);
 
-				if (hrs == '00') {
-					return `${mins}:${secs}`
-				}
-							
-				return `${hrs}:${mins}:${secs}`
+				return hrs == '00' ? `${mins}:${secs}` : `${hrs}:${mins}:${secs}`
 			},
 			sendPromptPressed() {
 				for(const x of this.promptBuilder.toReceive) {
