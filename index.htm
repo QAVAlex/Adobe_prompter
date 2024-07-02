@@ -488,6 +488,18 @@
 					break;
 					case 'prompt':
 						if (msgVal.user.id == this.user.meta.id) {
+							for (const x of this.user.prompts.list) {
+								if (x.item.id == msgVal.item.id) {
+									if (!x.accepted) {
+										x.accepted = true;
+										x.reason = 'REVOKED';
+										this.user.prompts.viewing = 0; 
+										clearInterval(x.intval)
+										this.instance.dispatchSyncMessage('confirm', x, true, true);
+										break;
+									}
+								}
+							}
 							this.user.prompts.list.push({ ...msgVal, intVal: null })
 							const indx = this.user.prompts.list.findIndex((x) => x.id == msgVal.id);
 							setTimeout(() => { 
