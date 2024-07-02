@@ -8,6 +8,7 @@
 			<file href="lib/"/>
 			<file href="lib/connect_customPodSDK.js"/>
 			<file href="./output.css"/>
+			<file href="./worker.js"/>
 		</asset>
 	</assets>
 </breeze-manifest>

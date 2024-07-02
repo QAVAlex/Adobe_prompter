@@ -161,7 +161,7 @@
 				</div>
 			</template>
 			<template x-if="tab == 4">
-				<div class="space-y-4 text-xs px-0.5" x-data="{dropdown: false, type: 'LIVE', allCounts: {}}" x-init="allCounts = tallyPrompts(); console.log(allCounts)">
+				<div class="space-y-4 text-xs px-0.5" x-data="{dropdown: false, type: 'LIVE', allCounts: {}}" x-init="allCounts = tallyPrompts()">
 					<img src="./lib/icons/left-carrot.svg" class="w-7 h-7 ml-auto cursor-pointer" @click="tab = 0" />
 					<div class="relative">
 						<small class="flex items-center overflow-hidden">Showing: <input type="text" class="pl-0.5 font-semibold rounded bg-transparent cursor-pointer focus:outline-none focus:border-0" :value="type" @click="dropdown = true" @click.away="dropdown = false" readonly /></small>
@@ -260,13 +260,16 @@
 		</div>
 	</template>
 
+	
+
 	<script>
 		const prompt = () => ({
 			instance: null,
+			worker: null,
 			tab: 0,
 			promptBuilder: { item: {}, alert: null, toReceive: [] },
 			controls: { countdown: 0, slides: 0, texts: { primary: null }, settings: { flash: true, showClock: true } },
-			presenters: { countdown: null, slides: null, text: null, intVal: null, settings: null },
+			presenters: { countdown: null, slides: null, text: null, settings: null },
 			list: {
 				attendees: [],
 				prompts: [
@@ -276,7 +279,8 @@
 							red: 'Please turn off your microphone',
 							amber: 'Get ready to toggle on/off your microphone',
 							green: 'Please turn on your microphone'
-						}
+						},
+						id: 1
 					},
 					{
 						icon: './lib/icons/webcam.svg',
@@ -284,7 +288,8 @@
 							red: 'Please turn off your webcam',
 							amber: 'Get ready to toggle on/off your webcam',
 							green: 'Please turn on your webcam'
-						}
+						},
+						id: 2
 					},
 					{
 						icon: './lib/icons/headset.svg',
@@ -292,7 +297,8 @@
 							red: 'Please turn off your webcam and microphone',
 							amber: 'Get ready to toggle on/off your webcam and microphone',
 							green: 'Please turn on your webcam and microphone'
-						}
+						},
+						id: 3
 					}
 				],
 				issued: []
@@ -303,7 +309,7 @@
 				this.instance = sync;
 				this.user.meta = this.instance.getMyUserDetails().data;
 				this.getAttendees();
-				this.setEvents();
+				this.setEvents();			
 			},
 			getAttendees() {
 				for(let i = 0; i <= this.instance.sc._userList.length - 1; i++) {
@@ -348,30 +354,37 @@
 						this.list.attendees[i].role = e.newRole;
 						const msg = { issued: this.list.issued, user: attendee }
 						this.instance.dispatchSyncMessage('syncNewRole', msg, true, false);
-						this.resetOwners();
+						this.instance.dispatchSyncMessage('owners', {controls: this.controls, terminateWorker: false}, true, false);
 						break;
 					}
 				}
 			},
 			updateSettings() {
 				this.resetPresenters(); 
-				this.resetOwners()
+				this.instance.dispatchSyncMessage('owners', {controls: this.controls, terminateWorker: false}, true, false);
 			},
 			updateSlidesPressed(reset = false) {
 				this.presenters.slides = this.controls.slides;
 				if (reset) {
-					this.resetPresenters();
-					this.resetOwners();
+					this.presenters.settings = { ...this.controls.settings };
+					this.instance.dispatchSyncMessage('presenters', this.presenters, true, false);
+					this.instance.dispatchSyncMessage('owners', {controls: this.controls, terminateWorker: false}, true, false);
 				}	
 			},
 			updateTextPressed(reset = false) {
 				this.presenters.text = this.controls.texts.primary;
 				if (reset) {
 					this.resetPresenters();
-					this.resetOwners();
+					this.instance.dispatchSyncMessage('owners', {controls: this.controls, terminateWorker: true}, true, false);
 				}
 			},
 			updateClockPressed(reset = false) {
+				if (this.worker) {
+					this.worker.terminate();
+					this.worker = undefined;
+				}
+				this.worker = new Worker("worker.js");
+				
 				const clockVal = this.$refs.i_time.value;
 				this.controls.countdown = clockVal
 				this.presenters.countdown = clockVal
@@ -394,7 +407,7 @@
 		
 				if (reset) {
 					this.resetPresenters();
-					this.resetOwners();
+					this.instance.dispatchSyncMessage('owners', {controls: this.controls, terminateWorker: true}, true, false);
 				}
 			},
 			fullUpdatePressed() {
@@ -402,17 +415,11 @@
 				this.updateTextPressed();
 				this.updateClockPressed();
 				this.resetPresenters();
-				this.resetOwners();
+				this.instance.dispatchSyncMessage('owners', {controls: this.controls, terminateWorker: true}, true, false);
 			},
 			resetPresenters() {
 				this.presenters.settings = { ...this.controls.settings };
-				if (!this.presenters.intVal) {
-					this.presenters.intVal = setInterval(() => this.handlePresenterCountdown(), 1000)
-				}
-				this.instance.dispatchSyncMessage('presenters', this.presenters, true, false);
-			},
-			resetOwners() {
-				this.instance.dispatchSyncMessage('owners', this.controls, true, false);
+				this.worker.onmessage = (event) => this.handlePresenterCountdown();
 			},
 			handlePresenterCountdown() {
 				let { countdown } = this.presenters;
@@ -472,7 +479,12 @@
 						this.presenters = {...msgVal};
 					break;
 					case 'owners':
-						this.controls = { ...msgVal };
+						this.controls = { ...msgVal.controls };
+						if (msgVal.terminateWorker) {
+							if (this.worker) {
+								this.worker.terminate()
+							}
+						}			
 					break;
 					case 'prompt':
 						if (msgVal.user.id == this.user.meta.id) {
